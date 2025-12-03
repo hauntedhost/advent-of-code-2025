@@ -46,62 +46,57 @@ pub fn part_one(input: &str) -> Option<u64> {
     Some(invalid_sum)
 }
 
-fn divisors(n: u64) -> Vec<u64> {
-    let mut divs = Vec::new();
-    let mut div = 1;
+// build range for block_len, e.g. 1 => 1..=9, 2 => 10.=99, etc
+fn block_range(block_len: usize) -> RangeInclusive<u64> {
+    let start = 10_u64.pow((block_len as u32) - 1);
+    let end = 10_u64.pow(block_len as u32) - 1;
+    start..=end
+}
 
-    while div * div <= n {
-        if n % div == 0 {
-            if div != n {
-                divs.push(div);
+// generate all invalid ids with repeating patterns up to max_id
+fn generate_invalid_ids(max_id: u64) -> Vec<u64> {
+    let mut invalid_ids = vec![];
+    let max_digits = max_id.to_string().len();
+    for total_digits in 2..=max_digits {
+        let midpoint = total_digits / 2;
+        for block_len in 1..=midpoint {
+            if total_digits % block_len != 0 {
+                continue;
             }
 
-            let div_pair = n / div;
-            if div_pair != div && div_pair != n && div_pair != 1 {
-                divs.push(div_pair);
+            let repeats = total_digits / block_len;
+            if repeats < 2 {
+                continue;
+            }
+
+            for block in block_range(block_len) {
+                let invalid_id: u64 = block.to_string().repeat(repeats).parse().unwrap();
+                if invalid_id > max_id {
+                    break;
+                }
+                invalid_ids.push(invalid_id);
             }
         }
-        div += 1;
     }
 
-    divs
-}
-
-fn chunk_str(s: &str, n: usize) -> Vec<String> {
-    s.chars()
-        .collect::<Vec<_>>()
-        .chunks(n)
-        .map(|chunk| chunk.iter().collect())
-        .collect()
-}
-
-fn any_not_equal<T: PartialEq>(v: &[T]) -> bool {
-    if let Some(first) = v.first() {
-        v.iter().skip(1).any(|x| x != first)
-    } else {
-        false
-    }
+    invalid_ids.sort_unstable();
+    invalid_ids.dedup();
+    invalid_ids
 }
 
 pub fn part_two(input: &str) -> Option<u64> {
-    let mut invalid_ids: Vec<u64> = vec![];
+    let ranges = parse_ranges(&input).unwrap();
+    let max_id = ranges.iter().map(|r| *r.end()).max().unwrap();
+    let invalid_ids = generate_invalid_ids(max_id);
 
-    for range in parse_ranges(&input).unwrap() {
-        'n: for n in range {
-            let s = n.to_string();
-            let s_len = s.len();
-
-            for div in divisors(s_len as u64) {
-                let s_chunks = chunk_str(&s, div as usize);
-                if !any_not_equal(&s_chunks) {
-                    invalid_ids.push(n);
-                    continue 'n;
-                }
-            }
-        }
+    let mut invalid_sum: u64 = 0;
+    for range in ranges {
+        let (start, end) = range.into_inner();
+        let lo = invalid_ids.partition_point(|&x| x < start);
+        let hi = invalid_ids.partition_point(|&x| x <= end);
+        invalid_sum += invalid_ids[lo..hi].iter().sum::<u64>();
     }
 
-    let invalid_sum = invalid_ids.iter().sum();
     Some(invalid_sum)
 }
 
