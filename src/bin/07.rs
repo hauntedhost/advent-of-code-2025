@@ -83,59 +83,38 @@ pub fn part_one(input: &str) -> Option<u64> {
 }
 
 pub fn part_two(input: &str) -> Option<u64> {
-    let mut lines = input.lines().peekable();
-    let last_row = lines.clone().count() - 2 as usize;
-    let last_col = lines.peek()?.chars().count() - 1 as usize;
+    let lines: Vec<&str> = input.lines().collect();
+    let rows = lines.len();
+    let cols = lines[0].chars().count();
 
-    let origin = lines.next()?.chars().enumerate().find_map(|(col, char)| {
-        if char == 'S' {
-            Some(Point::new(0, col))
-        } else {
-            None
-        }
-    })?;
+    let origin_col = lines[0].chars().position(|c| c == 'S')?;
 
     let manifold: Vec<Vec<bool>> = lines
-        .map(|line| {
-            line.chars()
-                .map(|char| if char == '^' { true } else { false })
-                .collect()
-        })
+        .iter()
+        .map(|l| l.chars().map(|c| c == '^').collect())
         .collect();
 
-    let mut current_row = HashMap::from([(origin, 1 as u64)]);
-    for _ in 1..last_row {
-        let mut next_row: HashMap<Point, u64> = HashMap::new();
-        for (beam, count) in current_row.into_iter() {
-            let next_down = Point {
-                row: beam.row + 1,
-                col: beam.col,
-            };
-
-            if manifold[next_down.row][next_down.col] {
-                if let Some(col) = next_down.col.checked_sub(1) {
-                    let split = Point {
-                        row: next_down.row,
-                        col,
-                    };
-                    *next_row.entry(split).or_insert(0) += count;
+    let mut current = HashMap::from([(origin_col, 1u64)]);
+    for row_i in 0..(rows - 1) {
+        let mut next: HashMap<usize, u64> = HashMap::new();
+        for (col_i, count) in current.into_iter() {
+            let next_row_i = row_i + 1;
+            if manifold[next_row_i][col_i] {
+                if let Some(next_col_i) = col_i.checked_sub(1) {
+                    *next.entry(next_col_i).or_insert(0) += count;
                 }
 
-                if next_down.col + 1 <= last_col {
-                    let split = Point {
-                        row: next_down.row,
-                        col: next_down.col + 1,
-                    };
-                    *next_row.entry(split).or_insert(0) += count;
-                };
+                if col_i + 1 < cols {
+                    *next.entry(col_i + 1).or_insert(0) += count;
+                }
             } else {
-                *next_row.entry(next_down).or_insert(0) += count;
+                *next.entry(col_i).or_insert(0) += count;
             }
         }
-        current_row = next_row;
+        current = next;
     }
 
-    let total = current_row.iter().fold(0, |acc, (_, count)| acc + count);
+    let total = current.values().copied().sum();
     Some(total)
 }
 
