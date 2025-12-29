@@ -101,8 +101,34 @@ pub fn part_one(input: &str) -> Option<u64> {
     Some(top3)
 }
 
-pub fn part_two(_input: &str) -> Option<u64> {
-    None
+pub fn part_two(input: &str) -> Option<u64> {
+    let junctions: Vec<Point> = input.lines().map(parse_point).collect();
+    let num_junctions = junctions.len();
+
+    let edges: Vec<(i128, usize, usize)> = (0..num_junctions)
+        .tuple_combinations()
+        .map(|(i, j)| {
+            let (ax, ay, az) = junctions[i];
+            let (bx, by, bz) = junctions[j];
+            let dist: i128 =
+                (ax - bx).pow(2) as i128 + (ay - by).pow(2) as i128 + (az - bz).pow(2) as i128;
+            (dist, i, j)
+        })
+        .sorted_by(|(dist1, _, _), (dist2, _, _)| dist1.cmp(dist2))
+        .collect();
+
+    let mut extension_len = None;
+    let mut dset = DisjointSet::new(num_junctions);
+    for &(_, i, j) in edges.iter() {
+        dset.union(i, j);
+        // break with extension length when dset has one component
+        if dset.component_sizes().len() == 1 {
+            extension_len = Some((junctions[i].0 * junctions[j].0) as u64);
+            break;
+        }
+    }
+
+    extension_len
 }
 
 #[cfg(test)]
@@ -118,6 +144,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, None);
+        assert_eq!(result, Some(25272));
     }
 }
